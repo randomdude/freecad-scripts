@@ -1,0 +1,17 @@
+import sys
+import json
+
+toolLib_js = App.ParamGet("User parameter:BaseApp/Preferences/Mod/Path").GetString("ToolLibrary-Main")
+toolLib = json.loads(toolLib_js)
+
+toolLib['Tools'] = {
+	'1': {'version': 1, 'name': '6x15', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 6.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 15.0}, 
+	'2': {'version': 1, 'name': '2x6', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 2.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 6.0}, 
+	'3': {'version': 1, 'name': '1x4', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 1.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 4.0}, 
+	'4': {'version': 1, 'name': '3x8', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 3.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 8.0}, 
+	'5': {'version': 1, 'name': '4x11 endmill', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 4.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 11.0}, 
+	'6': {'version': 1, 'name': '6x20mm', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 6.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}, 
+	'7': {'version': 1, 'name': '3x6 ball-end', 'tooltype': 'BallEndMill', 'material': 'Undefined', 'diameter': 0.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 0.0}, 
+	'8': {'version': 1, 'name': 'Drill, 3mm', 'tooltype': 'Drill', 'material': 'Carbide', 'diameter': 3.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}, 
+	'9': {'version': 1, 'name': 'Drill, 4mm', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 4.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}
+}
