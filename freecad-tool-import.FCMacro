@@ -1,0 +1,44 @@
+#
+# This script will import a Mach4 tooltable (from a hardcoded location, boo) into the
+# current FreeCad environment. 
+#
+
+import sys
+import json
+
+if 'configparser' not in sys.modules:
+	raise Exception("Please install the ConfigParser module with something like 'python -m pip install configparser' from your FreeCAD\bin directory")
+
+# Load tools from the Mach4 file
+mach4filename = "C:\Mach4Hobby\Profiles\Sherline\ToolTables\tooltable.tls"
+parser = configparser.ConfigParser()
+if len(parser.read(mach4filename)) == 0:
+	raise Exception(("Couldn't open or parse the file %s" % mach4filename))
+# Mach4 will store tools in sections starting at 'Tool1' and incrementing up to a default of 'Tool999'. Unused tools will have every property set to zero (or null)
+# so we iterate all sections beginning with "Tool" and skip ones which appear unused.
+mach4Tools = []
+toolSectionNames = filter(lambda x: x.find("Tool") == 0, parser.sections())
+for toolSectionName in toolSectionNames:
+	toolSection = parser[toolSectionName]
+	# Load this tool into a dict
+	mach4Tool = {}
+	for optionName in parser.options(toolSectionName):
+		mach4Tool[optionName] = parser.get(toolSectionName, optionName)
+	# Also take note of the tool number, parsing the section name to get it
+	mach4Tool['toolnumber'] = toolSectionName[4:]
+	# If all parameters are zero, skip it
+	if len(list(filter(lambda x: x != '0' and x != '', mach4Tool.values()))) == 0:
+		continue
+	mach4Tools.append(mach4Tool)
+
+# Now, load up the FreeCad tool library
+toolLib_js = App.ParamGet("User parameter:BaseApp/Preferences/Mod/Path").GetString("ToolLibrary-Main")
+toolLib = json.loads(toolLib_js)
+# And create a FreeCad tool for each of the Mach4 tools.
+for mach4Tool in mach4Tools:
+	freecadTool = { 'version': 1, 'cuttingEdgeAngle': 180.0 }
+	freecadTool['name'] = mach4Tool['desc']
+	freecadTool['diameter'] = mach4Tool['diameter']
+	freecadTool['length'] = mach4Tool['length']
+	freecadTool['cuttingEdgeHeight'] = mach4Tool['length']
+	toolLib['Tools'][mach4Tool['toolnumber']] = freecadTool
