@@ -13,5 +13,9 @@ toolLib['Tools'] = {
 	'6': {'version': 1, 'name': '6x20mm', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 6.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}, 
 	'7': {'version': 1, 'name': '3x6 ball-end', 'tooltype': 'BallEndMill', 'material': 'Undefined', 'diameter': 0.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 0.0}, 
 	'8': {'version': 1, 'name': 'Drill, 3mm', 'tooltype': 'Drill', 'material': 'Carbide', 'diameter': 3.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}, 
-	'9': {'version': 1, 'name': 'Drill, 4mm', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 4.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}
+	'9': {'version': 1, 'name': 'Drill, 3.2mm', 'tooltype': 'Drill', 'material': 'Carbide', 'diameter': 3.2, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}, 
+	'10': {'version': 1, 'name': 'Drill, 4mm', 'tooltype': 'Undefined', 'material': 'Carbide', 'diameter': 4.0, 'lengthOffset': 0.0, 'flatRadius': 0.0, 'cornerRadius': 0.0, 'cuttingEdgeAngle': 180.0, 'cuttingEdgeHeight': 20.0}
 }
+
+toolLib_js = json.dumps(toolLib)
+App.ParamGet("User parameter:BaseApp/Preferences/Mod/Path").SetString("ToolLibrary-Main", toolLib_js)
