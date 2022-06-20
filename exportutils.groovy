@@ -45,7 +45,10 @@ def locateURLForPreviousArtifact(thisArtifact)
 	lastBuildInfo["artifacts"].each { artifactInfo ->
 		artifactName = artifactInfo["fileName"]
 		artifactNameWithoutBuildNumber = artifactName.replaceAll(/_[0-9]*/, "")
+		print(artifactNameWithoutBuildNumber)
+		print(toFind)
 		if (artifactNameWithoutBuildNumber == toFind) {
+			print("OK")
 			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
 		}
 	}
@@ -99,8 +102,8 @@ def doBuildForFCStdFile(projPath)
 
 			// Make a 'diff' of the exported image against the previous successful build.
 			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
-			$previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
-			if ($previousScreenshotURL != null)
+			previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
+			if (previousScreenshotURL != null)
 			{
 				bat script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${previousScreenshotURL} -o old.png"
 				// Remove the rapid moves (in red)
