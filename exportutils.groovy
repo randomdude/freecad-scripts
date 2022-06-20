@@ -51,7 +51,6 @@ String locateURLForPreviousArtifact(thisArtifact)
 		if (artifactNameWithoutBuildNumber == toFind) {
 			print("OK")
 			toRet = "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
-			break
 		}
 	}
 	return toRet
