@@ -33,15 +33,15 @@ def doBuildForFCStdFile(projPath)
 		{
 			projDir = '.'
 			projName = projPath
-			scriptName = "export-${projName}.py"
 		}
 		else
 		{
 			projDir = projPathEl[0]
 			projName = projPathEl[1]
-			scriptName = "export-${projName}.py"
-			bat "copy exportutils.py ${projDir}\\"
 		}
+
+		scriptName = "export-${projName}.py"
+		bat "copy freecad-scripts\exportutils.py ${projDir}\\"
 
 		dir(projDir)
 		{
@@ -56,9 +56,13 @@ def doBuildForFCStdFile(projPath)
 			bat "copy ${sourceFilename} ${tempName}"
 			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
 			
-			// We should have some nice gcode now, and a screenshot.
-			archiveArtifacts artifacts: outputGCodeFilename, onlyIfSuccessful: true
-			archiveArtifacts artifacts: outputScreenshotFilename, onlyIfSuccessful: true
+			// We should have some nice gcode now, and a screenshot. Rename them to include the build number before archiving them.
+			archivedOutputGCodeFilename = "${projName}_${$BUILD_NUMBER}.gcode"
+			bat "copy ${outputGCodeFilename} ${archivedOutputGCodeFilename}"
+			archivedoutputScreenshotFilename = "${projName}_${$BUILD_NUMBER}.png"
+			bat "copy ${outputScreenshotFilename} ${archivedoutputScreenshotFilename}"
+			archiveArtifacts artifacts: archivedOutputGCodeFilename, onlyIfSuccessful: true
+			archiveArtifacts artifacts: archivedoutputScreenshotFilename, onlyIfSuccessful: true
 
 			// Make a 'diff' of the exported image against the previous successful build.
 			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
@@ -80,7 +84,10 @@ def doBuildForFCStdFile(projPath)
 				
 				if ($newPixels.trim() != "0" || $oldPixels.trim() != "0")
 				{
-					archiveArtifacts artifacts: diffFilename, onlyIfSuccessful: true
+					// As before, rename to something nicer before archiving.
+					archiveddiffFilename = "${projName}_${$BUILD_NUMBER}_changes.png"
+					bat "copy ${diffFilename} ${archiveddiffFilename}"
+					archiveArtifacts artifacts: archiveddiffFilename, onlyIfSuccessful: true
 				}
 			}
 		}
