@@ -39,12 +39,13 @@ def locateURLForPreviousArtifact(thisArtifact)
 	def lastBuildInfo = readJSON(text: jsonData)
 
 	// Prune the build number from the thing we're finding
-	toFind = thisArtifact.replaceAll(/_.*/, "")
+	toFind = thisArtifact.replaceAll(/_[0-9]*/, "")
 	
 	// Now iterate over artifacts, returning a URL for any that match.
 	lastBuildInfo["artifacts"].each { artifactInfo ->
 		artifactName = artifactInfo["fileName"]
-		if (artifactName.startsWith(thisArtifact)) {
+		artifactNameWithoutBuildNumber = artifactName.replaceAll(/_[0-9]*/, "")
+		if (artifactNameWithoutBuildNumber == toFind) {
 			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
 		}
 	}
