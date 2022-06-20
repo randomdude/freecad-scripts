@@ -23,7 +23,7 @@ def installReqs()
 	}
 }
 
-def locateURLForPreviousArtifact(thisArtifact)
+String locateURLForPreviousArtifact(thisArtifact)
 {
 	// Since our artifacts are suffixed with the build number, look at the last successful build and find the
 	// URL pointing to the artifact corresponding to the provided (if any).
@@ -31,7 +31,7 @@ def locateURLForPreviousArtifact(thisArtifact)
 	// Get a list of artifacts..
 	$curlStatus = bat returnStatus: true, script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/$JOB_NAME/lastStableBuild/api/python -o lastStableBuild.json"
 	if ($curlStatus != 0)
-	return null
+		return null
 	// Read response from Jenkins API and deserialise. Note that we need to escape some text since jenkins will provide the literal "None" without proper
 	// quoting.
 	jsonData = readFile('lastStableBuild.json')
