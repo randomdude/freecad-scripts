@@ -46,10 +46,7 @@ String locateURLForPreviousArtifact(thisArtifact)
 	lastBuildInfo["artifacts"].each { artifactInfo ->
 		artifactName = artifactInfo["fileName"]
 		artifactNameWithoutBuildNumber = artifactName.replaceAll(/_[0-9]*/, "")
-		print(artifactNameWithoutBuildNumber)
-		print(toFind)
 		if (artifactNameWithoutBuildNumber == toFind) {
-			print("OK")
 			toRet = "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
 		}
 	}
@@ -106,7 +103,7 @@ def doBuildForFCStdFile(projPath)
 			previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
 			if (previousScreenshotURL != null)
 			{
-				bat script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${previousScreenshotURL} -o old.png"
+				bat script: "curl --fail ${previousScreenshotURL} -o old.png"
 				// Remove the rapid moves (in red)
 				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" old2.png'
 				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" exported2.png"
