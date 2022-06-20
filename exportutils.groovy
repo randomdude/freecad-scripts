@@ -42,6 +42,7 @@ String locateURLForPreviousArtifact(thisArtifact)
 	toFind = thisArtifact.replaceAll(/_[0-9]*/, "")
 	
 	// Now iterate over artifacts, returning a URL for any that match.
+	toRet = null
 	lastBuildInfo["artifacts"].each { artifactInfo ->
 		artifactName = artifactInfo["fileName"]
 		artifactNameWithoutBuildNumber = artifactName.replaceAll(/_[0-9]*/, "")
@@ -49,10 +50,11 @@ String locateURLForPreviousArtifact(thisArtifact)
 		print(toFind)
 		if (artifactNameWithoutBuildNumber == toFind) {
 			print("OK")
-			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
+			toRet = "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
+			break
 		}
 	}
-	return null
+	return toRet
 }
 
 def doBuildForFCStdFile(projPath)
