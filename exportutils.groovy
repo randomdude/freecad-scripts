@@ -93,8 +93,8 @@ def doBuildForFCStdFile(projPath)
 			// We should have some nice gcode now, and a screenshot. Rename them to include the build number before archiving them.
 			bat "copy ${outputGCodeFilename} ${archivedOutputGCodeFilename}"
 			bat "copy ${outputScreenshotFilename} ${archivedoutputScreenshotFilename}"
-			archiveArtifacts artifacts: outputGCodeFilename, onlyIfSuccessful: true
-			archiveArtifacts artifacts: outputScreenshotFilename, onlyIfSuccessful: true
+			archiveArtifacts artifacts: archivedOutputGCodeFilename, onlyIfSuccessful: true
+			archiveArtifacts artifacts: archivedoutputScreenshotFilename, onlyIfSuccessful: true
 
 			// Make a 'diff' of the exported image against the previous successful build.
 			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
