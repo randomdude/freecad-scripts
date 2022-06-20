@@ -80,11 +80,11 @@ def doBuildForFCStdFile(projPath)
 			// Filenames that are created by the exportutils.py script or by us
 			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
 			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
-			diffFilename = "${projName}_${$BUILD_NUMBER}_diff.png"
+			diffFilename = "${projName}_${BUILD_NUMBER}_diff.png"
 			
 			// Friendly names of outputs which we may archive (renamed from the above).
-			archivedOutputGCodeFilename = "${projName}_${$BUILD_NUMBER}.gcode"
-			archivedoutputScreenshotFilename = "${projName}_${$BUILD_NUMBER}.png"
+			archivedOutputGCodeFilename = "${projName}_${BUILD_NUMBER}.gcode"
+			archivedoutputScreenshotFilename = "${projName}_${BUILD_NUMBER}.png"
 			
 			// Now we can start FreeCAD and run our scripts on a copy of our design.
 			bat "copy ${sourceFilename} ${tempName}"
