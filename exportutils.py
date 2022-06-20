@@ -268,7 +268,7 @@ class exportutils:
 			v = FreeCADGui.activeDocument().activeView()
 			v.viewIsometric()
 			v.setViewDirection((0,0,-1))
-			v.fitAll(0.5)
+			v.fitAll(1)
 			v.saveImage(filename)
 		finally:
 			# Restore original background cols. FIXME: hope the user didn't set their own since they'll be reset..
