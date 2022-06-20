@@ -45,7 +45,7 @@ def locateURLForPreviousArtifact(thisArtifact)
 	lastBuildInfo["artifacts"].each { artifactInfo ->
 		artifactName = artifactInfo["fileName"]
 		if (artifactName.startsWith(thisArtifact)) {
-			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}")
+			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactName}"
 		}
 	}
 	return null
