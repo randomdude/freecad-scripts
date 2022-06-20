@@ -23,6 +23,33 @@ def installReqs()
 	}
 }
 
+def locateURLForPreviousArtifact(thisArtifact)
+{
+	// Since our artifacts are suffixed with the build number, look at the last successful build and find the
+	// URL pointing to the artifact corresponding to the provided (if any).
+	
+	// Get a list of artifacts..
+	$curlStatus = bat returnStatus: true, script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/$JOB_NAME/lastStableBuild/api/python -o lastStableBuild.json"
+	if ($curlStatus != 0)
+	return null
+	// Read response from Jenkins API and deserialise. Note that we need to escape some text since jenkins will provide the literal "None" without proper
+	// quoting.
+	jsonData = readFile('lastStableBuild.json')
+	jsonData = jsonData.replace("None", "\"None\"")
+	def lastBuildInfo = readJSON(text: jsonData)
+
+	// Prune the build number from the thing we're finding
+	toFind = thisArtifact.replaceAll(/_.*/, "")
+	
+	// Now iterate over artifacts, returning a URL for any that match.
+	lastBuildInfo["artifacts"].each { artifactInfo ->
+		if (artifactInfo["fileName"].startsWith(thisArtifact)) {
+			return "http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${artifactInfo["fileName"]}")
+		}
+	}
+	return null
+}
+
 def doBuildForFCStdFile(projPath)
 {
 	stage("Generating gcode")
@@ -41,7 +68,7 @@ def doBuildForFCStdFile(projPath)
 		}
 
 		scriptName = "export-${projName}.py"
-		bat "copy freecad-scripts\\exportutils.py ${projDir}\\"
+		bat "copy freecad-scripts\exportutils.py ${projDir}\\"
 
 		dir(projDir)
 		{
@@ -52,21 +79,28 @@ def doBuildForFCStdFile(projPath)
 			// Filenames that are created by the exportutils.py script or by us
 			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
 			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
-			diffFilename = "exported_${projName}_diff.png"
+			diffFilename = "${projName}_${$BUILD_NUMBER}_diff.png"
+			
+			// Friendly names of outputs which we may archive (renamed from the above).
+			archivedOutputGCodeFilename = "${projName}_${$BUILD_NUMBER}.gcode"
+			archivedoutputScreenshotFilename = "${projName}_${$BUILD_NUMBER}.png"
 			
 			// Now we can start FreeCAD and run our scripts on a copy of our design.
 			bat "copy ${sourceFilename} ${tempName}"
 			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
 			
 			// We should have some nice gcode now, and a screenshot. Rename them to include the build number before archiving them.
+			bat "copy ${outputGCodeFilename} ${archivedOutputGCodeFilename}"
+			bat "copy ${outputScreenshotFilename} ${archivedoutputScreenshotFilename}"
 			archiveArtifacts artifacts: outputGCodeFilename, onlyIfSuccessful: true
 			archiveArtifacts artifacts: outputScreenshotFilename, onlyIfSuccessful: true
 
 			// Make a 'diff' of the exported image against the previous successful build.
 			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
-			$curlStatus = bat returnStatus: true, script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/rackmount-ossc/lastStableBuild/artifact/${outputScreenshotFilename} -o old.png"
-			if ($curlStatus == 0)
+			$previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
+			if ($previousScreenshotURL != None)
 			{
+				bat script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${previousScreenshotURL} -o old.png"
 				// Remove the rapid moves (in red)
 				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" old2.png'
 				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" exported2.png"
