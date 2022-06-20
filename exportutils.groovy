@@ -69,7 +69,7 @@ def doBuildForFCStdFile(projPath)
 		}
 
 		scriptName = "export-${projName}.py"
-		bat "copy freecad-scripts\exportutils.py ${projDir}\\"
+		bat "copy freecad-scripts\\exportutils.py ${projDir}\\"
 
 		dir(projDir)
 		{
