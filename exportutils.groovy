@@ -99,7 +99,7 @@ def doBuildForFCStdFile(projPath)
 			// Make a 'diff' of the exported image against the previous successful build.
 			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
 			$previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
-			if ($previousScreenshotURL != None)
+			if ($previousScreenshotURL != null)
 			{
 				bat script: "curl --fail http://jenkins.home.gamesfairy.co.uk/job/${JOB_NAME}/lastStableBuild/artifact/${previousScreenshotURL} -o old.png"
 				// Remove the rapid moves (in red)
