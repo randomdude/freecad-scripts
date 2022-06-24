@@ -30,13 +30,13 @@ class cutterMaterial:
 		self.feedSpeed  = feedSpeed
 		self.kerf = kerf
 	
-	def bamboo(thickness):
-		return cutterMaterial(thickness, (300 / 60) * 1.7, 3000 / 60, 0.20)
+	def bamboo(thickness, kerf = 0.20):
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, raidSpeed = 3000 / 60, kerf = kerf)
 
-	def mdf(thickness):
-		return cutterMaterial(thickness, (300 / 60) * 1.7, 3000 / 60)
+	def mdf(thickness, kerf = 0.20):
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, raidSpeed = 3000 / 60, kerf = kerf)
 
-	def acrylic(thickness):
+	def acrylic(thickness, kerf = 0.20):
 		speeds = { 
 			1: 2.5, 
 			2: 2.0, 
@@ -45,7 +45,7 @@ class cutterMaterial:
 		}
 		if thickness not in speeds.keys:
 			raise Exception("Speed multiplier for acrylic at thickness " + thickness + " mm not defined")
-		return cutterMaterial(thickness, (300 / 60) * speeds[thickness], 3000 / 60)
+		return cutterMaterial(thickness, (300 / 60) * speeds[thickness], 3000 / 60, kerf)
 
 class tabbedObjectBuilder:
 	def __init__(self, objectNames, material):
