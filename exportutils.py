@@ -31,10 +31,10 @@ class cutterMaterial:
 		self.kerf = kerf
 	
 	def bamboo(thickness, kerf = 0.20):
-		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, raidSpeed = 3000 / 60, kerf = kerf)
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
 	def mdf(thickness, kerf = 0.20):
-		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, raidSpeed = 3000 / 60, kerf = kerf)
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
 	def acrylic(thickness, kerf = 0.20):
 		speeds = { 
