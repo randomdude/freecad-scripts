@@ -180,7 +180,7 @@ class exportutils:
 		## make job object and set some basic properties
 		cncjob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
 		cncjob.PostProcessor = 'lcnclaser'
-		cncjob.PostProcessorArgs = "--no-show-editor"
+		cncjob.PostProcessorArgs = "--no-show-editor --suppress-z"
 
 		# We can set up our tool now, and a toolcontroller to control it.
 		lasertool = PathScripts.PathToolBit.Factory.Create('laserbeam')
