@@ -183,7 +183,7 @@ class exportutils:
 		cncjob.PostProcessor = 'lcnclaser'
 		cncjob.PostProcessorArgs = " --no-show-editor "
 		if self.allowZMoves == False:
-			cncjob.PostProcessorArgs = " --suppress-z "
+			cncjob.PostProcessorArgs = cncjob.PostProcessorArgs + " --suppress-z "
 
 		# We can set up our tool now, and a toolcontroller to control it.
 		lasertool = PathScripts.PathToolBit.Factory.Create('laserbeam')
