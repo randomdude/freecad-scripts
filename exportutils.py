@@ -119,6 +119,7 @@ class exportutils:
 		self.material = material
 		self.objectsToCut = objectsToCut
 		self.gcode = None
+		self.allowZMoves = False
 
 	def rotateAndPositionAllObjectsOnZ(self):
 		for obj in self.objectsToCut:
@@ -180,7 +181,9 @@ class exportutils:
 		## make job object and set some basic properties
 		cncjob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
 		cncjob.PostProcessor = 'lcnclaser'
-		cncjob.PostProcessorArgs = "--no-show-editor --suppress-z"
+		cncjob.PostProcessorArgs = " --no-show-editor "
+		if self.allowZMoves == False:
+			cncjob.PostProcessorArgs = " --suppress-z "
 
 		# We can set up our tool now, and a toolcontroller to control it.
 		lasertool = PathScripts.PathToolBit.Factory.Create('laserbeam')
@@ -236,13 +239,16 @@ class exportutils:
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith([cutObjs], cncjob, False)
 	
-	def saveGCode(self, filename = None):
+	def generateGCode(self):
 		if self.gcode is None:
 			raise Exception(".execute not called before attempt to save gcode")
+		return self.gcode
+
+	def saveGCode(self, filename = None):
 		if filename is None:
 			filename = FreeCAD.ActiveDocument.Name + ".gcode"
 		with open(filename, 'w') as f:
-			f.write(self.gcode)
+			f.write(self.generateGCode())
 
 	def saveScreenshotOfPath(self, filename = None):
 		if self.gcode is None:
