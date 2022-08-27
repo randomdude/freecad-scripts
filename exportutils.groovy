@@ -111,8 +111,8 @@ def doBuildForFCStdFile(projPath)
 				bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -normalize -trim ${diffFilename}"
 				
 				// We count the number of blue and red pixels. If there are none, then there are no changes in this file at all.
-				$newPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 10%% +opaque \"rgb(0,0,255)\" -fill white -fuzz 10%% -opaque \"rgb(0,0,255)\" -format \"%%[fx:w*h*mean]\" info:")
-				$oldPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 10%% +opaque \"rgb(219,0,0)\" -fill white -fuzz 10%% -opaque \"rgb(219,0,0)\" -format \"%%[fx:w*h*mean]\" info:")
+				$newPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(0,0,255)\" -format \"%%[fx:w*h*mean]\" info:")
+				$oldPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(219,0,0)\" -format \"%%[fx:w*h*mean]\" info:")
 				
 				echo "Newly-added   pixel count: ${$newPixels.trim()}"
 				echo "Newly-removed pixel count: ${$oldPixels.trim()}"
