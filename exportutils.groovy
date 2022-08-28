@@ -108,7 +108,7 @@ def doBuildForFCStdFile(projPath)
 				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" old2.png'
 				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" exported2.png"
 				// And create the diff.
-				bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -normalize -trim ${diffFilename}"
+				bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -normalize ${diffFilename}"
 				
 				// We count the number of blue and red pixels. If there are none, then there are no changes in this file at all.
 				$newPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(0,0,255)\" -format \"%%[fx:w*h*mean]\" info:")
