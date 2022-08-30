@@ -24,16 +24,16 @@ import math
 # The values are taken from the suggested values for my laser cutter, ie
 # https://lionsforge.com.sg/wp-content/uploads/2019/09/CraftLaser-Settings-Guide.pdf
 class cutterMaterial:
-	def __init__(self, thickness, feedSpeed, rapidSpeed, kerf = 0.30):
+	def __init__(self, thickness, feedSpeed, rapidSpeed, kerf = 0.25):
 		self.thickness = thickness
 		self.rapidSpeed =  rapidSpeed
 		self.feedSpeed  = feedSpeed
 		self.kerf = kerf
 	
-	def bamboo(thickness, kerf = 0.30):
+	def bamboo(thickness, kerf = 0.25):
 		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
-	def mdf(thickness, kerf = 0.30):
+	def mdf(thickness, kerf = 0.25):
 		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
 	def acrylic(thickness, kerf = 0.20):
