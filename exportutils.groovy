@@ -105,8 +105,8 @@ def doBuildForFCStdFile(projPath)
 			{
 				bat script: "curl --fail ${previousScreenshotURL} -o old.png"
 				// Remove the rapid moves (in red)
-				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" old2.png'
-				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" exported2.png"
+				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" -trim old2.png'
+				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" -trim exported2.png"
 				// And create the diff.
 				bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -auto-level ${diffFilename}"
 				
