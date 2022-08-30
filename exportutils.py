@@ -15,6 +15,8 @@ import PathScripts.PathJob
 
 import math
 
+from PySide import QtCore,QtGui
+
 #
 # This class holds factory-style definitions for each of our materials.
 # Each thickness of material defines a speed, defined as a multiplier
@@ -273,6 +275,14 @@ class exportutils:
 		pg.SetUnsigned("BackgroundColor3", 0xffffffff)
 
 		try:
+			# maximise the window so we get the best quality we can
+			window = FreeCADGui.getMainWindow()
+			mdi = window.findChild(QtGui.QMdiArea)
+			sub = mdi.activeSubWindow()
+			sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
+			sub.setParent(None, QtCore.Qt.Window)
+			sub.showFullScreen()
+
 			v = FreeCADGui.activeDocument().activeView()
 			v.viewIsometric()
 			v.setViewDirection((0,0,-1))
@@ -282,3 +292,8 @@ class exportutils:
 			# Restore original background cols. FIXME: hope the user didn't set their own since they'll be reset..
 			pg.RemUnsigned("BackgroundColor2")
 			pg.RemUnsigned("BackgroundColor3")
+
+			# And restore the maximised window.sub.setWindowFlags(sub.windowFlags() & ~QtCore.Qt.Window)
+			mdi.addSubWindow(sub)
+			sub.update()
+			sub.showNormal()
