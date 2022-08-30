@@ -221,6 +221,8 @@ class exportutils:
 		cutObjs.processHoles = True
 		cutObjs.processCircles = True
 		cutObjs.Base = toCut
+		# Strangely, we must set the 'side' after we set the .Base, otherwise it will be reset to 'Inside'.
+		cutObjs.Side = "Outside"
 		# We set start and final depth the same so that we get a 2D laser-style output.
 		cutObjs.ToolController = toolController
 		cutObjs.setExpression('FinalDepth', None)
