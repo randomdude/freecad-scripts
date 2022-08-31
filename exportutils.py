@@ -274,14 +274,24 @@ class exportutils:
 		pg.SetUnsigned("BackgroundColor2", 0xffffffff)
 		pg.SetUnsigned("BackgroundColor3", 0xffffffff)
 
+		sub = None
 		try:
 			# maximise the window so we get the best quality we can
-			window = FreeCADGui.getMainWindow()
-			mdi = window.findChild(QtGui.QMdiArea)
-			sub = mdi.activeSubWindow()
-			sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
-			sub.setParent(None, QtCore.Qt.Window)
-			sub.showFullScreen()
+			retries = 5
+			while True:
+				try:
+					window = FreeCADGui.getMainWindow()
+					mdi = window.findChild(QtGui.QMdiArea)
+					sub = mdi.activeSubWindow()
+					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
+					sub.setParent(None, QtCore.Qt.Window)
+					sub.showFullScreen()
+					break
+				except AttributeError:
+					if retries == 0:
+						raise
+					retries = retries - 1
+					pass
 
 			v = FreeCADGui.activeDocument().activeView()
 			v.viewIsometric()
@@ -293,7 +303,9 @@ class exportutils:
 			pg.RemUnsigned("BackgroundColor2")
 			pg.RemUnsigned("BackgroundColor3")
 
-			# And restore the maximised window.sub.setWindowFlags(sub.windowFlags() & ~QtCore.Qt.Window)
-			mdi.addSubWindow(sub)
-			sub.update()
-			sub.showNormal()
+			# And restore the maximised window.
+			if sub is not None:
+				sub.setWindowFlags(sub.windowFlags() & ~QtCore.Qt.Window)
+				mdi.addSubWindow(sub)
+				sub.update()
+				sub.showNormal()
