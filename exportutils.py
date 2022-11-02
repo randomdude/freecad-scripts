@@ -17,6 +17,7 @@ import math
 
 from PySide import QtCore,QtGui
 
+
 #
 # This class holds factory-style definitions for each of our materials.
 # Each thickness of material defines a speed, defined as a multiplier
@@ -119,7 +120,14 @@ class tabbedObjectBuilder:
 class exportutils:
 	def __init__(self, objectsToCut, material):
 		self.material = material
-		self.objectsToCut = objectsToCut
+		# If anything in objectsToCut is actually a name, assume it is the label of an object and find/add that object.
+		self.objectsToCut = []
+		for objectToCut in objectsToCut:
+			if objectToCut.__class__ is str:
+				self.objectsToCut.append(exportutils.getObjectByLabel(objectToCut))
+			else:
+				self.objectsToCut.append(objectToCut)
+
 		self.gcode = None
 		self.allowZMoves = False
 
@@ -277,12 +285,15 @@ class exportutils:
 		sub = None
 		try:
 			# maximise the window so we get the best quality we can
-			retries = 5
+			retries = 10
 			while True:
 				try:
 					window = FreeCADGui.getMainWindow()
 					mdi = window.findChild(QtGui.QMdiArea)
 					sub = mdi.activeSubWindow()
+					if sub is None:
+						retries = retries - 1
+						continue
 					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
 					sub.setParent(None, QtCore.Qt.Window)
 					sub.showFullScreen()
@@ -309,3 +320,145 @@ class exportutils:
 				mdi.addSubWindow(sub)
 				sub.update()
 				sub.showNormal()
+
+	def deleteCADObjects():
+		# Clean up and leftover objects from previous CNC'ing
+		doc = FreeCAD.ActiveDocument
+		for objToDelName in ["Myjob", "Operations", "Stock", "Model", "Tools", "SetupSheet", "toolController", "Endmill"]:
+			toDel = doc.getObjectsByLabel(objToDelName)
+			if len(toDel) > 0:
+				try:
+					doc.removeObject(objToDelName)
+				except FreeCAD.Base.FreeCADError:
+					pass
+		for obj in doc.Objects:
+			objProxy = getattr(obj, "Proxy", "foo")
+			if objProxy.__class__ in [PathScripts.PathJob.ObjectJob, PathScripts.PathSetupSheet.SetupSheet, PathScripts.PathToolBit.ToolBit, PathScripts.PathProfile.ObjectProfile, PathScripts.PathPocket.ObjectPocket, PathScripts.PathToolController.ToolController]:
+				doc.removeObject(obj.Name)
+
+	def executeForMill(self, faceplateCut):
+		doc = FreeCAD.ActiveDocument
+		if 'exported_' not in doc.Name:
+			raise Exception("Run build scripts on a copy of the input, not the original")
+
+		exportutils.deleteCADObjects()
+
+		# Generate a dict keyed by object. This will contain faces of each feature we'll be cutting.
+		objs = {}
+		for obj in self.objectsToCut:
+			objs[obj] = []
+
+		# Group faces according to the object they're in
+		faceIdx = 0
+		for face in faceplateCut.Shape.Faces:
+			faceIdx = faceIdx + 1
+			# We're only interested in faces which are perpendicular to Z.
+			if abs(faceplateCut.Shape.Faces[faceIdx - 1].normalAt(0,0).z) > 0.01:
+				continue
+			for obj in objs:
+				allInside = True
+				for v in face.Vertexes:
+					if obj.Shape.isInside(FreeCAD.Vector(v.X, v.Y, 0), 0.1, True) == False:
+						allInside = False
+						break
+				if allInside:
+					objs[obj].append("Face%d" % faceIdx)
+
+		## make job object and set some basic properties
+		faceplateCut.Visibility = True
+		faceplateCut.recompute()
+		cncjob = PathScripts.PathJob.Create('Myjob', [faceplateCut])
+		cncjob.PostProcessor = 'mach3_mach4'
+		cncjob.PostProcessorArgs = "--no-show-editor"
+
+		# Set stock offset to zero 
+		stock = doc.getObjectsByLabel('Stock')[0]
+		stock.ExtXneg = 0
+		stock.ExtXpos = 0
+		stock.ExtYneg = 0
+		stock.ExtYpos = 0
+		stock.ExtZneg = 0
+		stock.ExtZpos = 0
+
+		# We can set up our tool now, and a toolcontroller to control it
+		cutter = PathScripts.PathToolBit.Factory.Create('cutter')
+		toolController = PathScripts.PathToolController.Create('toolController')
+		toolController.Tool = cutter
+		cutter.Diameter = self.material.kerf
+		cutter.Label = "%dmm endmill" % cutter.Diameter
+
+		# And set up speeds and feeds.
+		cncjob.SetupSheet.HorizRapid = self.material.rapidSpeed
+		cncjob.SetupSheet.VertRapid = self.material.rapidSpeed
+		toolController.HorizFeed = self.material.feedSpeed
+		toolController.VertFeed  = self.material.feedSpeed
+		cncjob.Tools.Group = [ toolController ]
+
+		# Make pocket and path objects for each
+		pathObjects = []
+		for obj in objs.keys():
+			# Pocket in conventional mode, with 0.1mm allowance that we'll take off during the profiling
+			pocketObj = PathScripts.PathPocket.Create("pocket_%s" % obj.Label)
+			pocketObj.StepOver = 50
+			pocketObj.CutMode = "Conventional"
+			pocketObj.ExtraOffset = 0.1
+			pocketObj.Base = (faceplateCut, objs[obj] )
+			pocketObj.setExpression('StepDown', None)
+			pocketObj.StepDown = 4
+			pathObjects.append(pocketObj)
+			# And then profile nicely.
+			profileObj = PathScripts.PathProfile.Create("profile_%s" % obj.Label)
+			profileObj.Base = (faceplateCut, objs[obj] )
+			profileObj.setExpression('FinalDepth ', None)
+			profileObj.FinalDepth = -0.5
+			profileObj.setExpression('StepDown', None)
+			profileObj.StepDown = 3.5
+			pathObjects.append(profileObj)
+
+		cncjob.recompute(True)
+
+		# Post-process the job now
+		p = CommandPathPost()
+		s, self.gcode, filename = p.exportObjectsWith(pathObjects, cncjob, False)
+#		with open("%s-mill%s.gcode" % (filenamePrefix, filenameSuffix), 'w') as f:
+#			f.write(gcode)
+
+	def getObjectByLabel(objName):
+		toRet = FreeCAD.ActiveDocument.getObjectsByLabel(objName)
+		if len(toRet) > 0:
+			return toRet[0]
+		
+		# Try searching linked objects, then.
+		for obj in FreeCAD.ActiveDocument.Objects:
+			if obj.__class__ == FreeCAD.DocumentObject:
+				linkTarget = getattr(obj, 'LinkedObject', None)
+				if linkTarget is None:
+					continue
+				for toTest in getattr(linkTarget, 'Group', []):
+					if toTest.Label == objName:
+						return toTest
+		raise Exception("Couldn't find object " + objName)
+
+	def executeForDrilling(self, faceplateCut):
+		exportutils.deleteCADObjects()
+
+		cncjob = PathScripts.PathJob.Create('Myjob', [faceplateCut])
+		cncjob.PostProcessor = 'mach3_mach4'
+		cncjob.PostProcessorArgs = "--no-show-editor"
+
+		# Set stock offset to zero 
+		stock = exportutils.getObjectByLabel('Stock')
+		stock.ExtXneg = 0
+		stock.ExtXpos = 0
+		stock.ExtYneg = 0
+		stock.ExtYpos = 0
+		stock.ExtZneg = 0
+		stock.ExtZpos = 0
+
+		drillObj = PathScripts.PathDrilling.Create("drills")
+
+		cncjob.recompute(True)
+
+		# Post-process the job now
+		p = CommandPathPost()
+		s, self.gcode, filename = p.exportObjectsWith([drillObj], cncjob, False)
