@@ -130,7 +130,7 @@ def doBuildForFCStdFile(projPath)
 			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
 			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
 
-			archiveGCodeAndScreenshotFiles(projName, outputGCodeFilename, outputScreenshotFilename)
+			this.archiveGCodeAndScreenshotFiles(projName, outputGCodeFilename, outputScreenshotFilename)
 		}
 	}
 }
