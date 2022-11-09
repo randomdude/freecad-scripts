@@ -336,7 +336,7 @@ class exportutils:
 			if objProxy.__class__ in [PathScripts.PathJob.ObjectJob, PathScripts.PathSetupSheet.SetupSheet, PathScripts.PathToolBit.ToolBit, PathScripts.PathProfile.ObjectProfile, PathScripts.PathPocket.ObjectPocket, PathScripts.PathToolController.ToolController]:
 				doc.removeObject(obj.Name)
 
-	def executeForMill(self, faceplateCut):
+	def executeForMill(self, faceplateCut, upsideDown = False):
 		doc = FreeCAD.ActiveDocument
 		if 'exported_' not in doc.Name:
 			raise Exception("Run build scripts on a copy of the input, not the original")
@@ -353,16 +353,28 @@ class exportutils:
 		for face in faceplateCut.Shape.Faces:
 			faceIdx = faceIdx + 1
 			# We're only interested in faces which are perpendicular to Z.
-			if abs(faceplateCut.Shape.Faces[faceIdx - 1].normalAt(0,0).z) > 0.01:
+			norm = abs(faceplateCut.Shape.Faces[faceIdx - 1].normalAt(0,0).z)
+			if norm > 0.01:
+				print("face Face%d: Doesn't point up/down" % faceIdx)
 				continue
 			for obj in objs:
 				allInside = True
 				for v in face.Vertexes:
-					if obj.Shape.isInside(FreeCAD.Vector(v.X, v.Y, 0), 0.1, True) == False:
+					if obj.Shape.isInside(FreeCAD.Vector(v.X, v.Y, v.Z), 0.1, True) == False:
 						allInside = False
 						break
 				if allInside:
+					print("Face%d selected" % faceIdx)
 					objs[obj].append("Face%d" % faceIdx)
+				else:
+					print("Face%d not all inside any object" % faceIdx)
+		# Do a quick sanity check, each object should have at least one face
+		for obj in objs:
+			if len(objs[obj]) == 0:
+				raise Exception("Object %s has no faces that intersect object to be cut" % obj.Label )
+
+		if upsideDown:
+			faceplateCut.Placement.Rotation = FreeCAD.Rotation(FreeCAD.Vector(1,0,0), 180)
 
 		## make job object and set some basic properties
 		faceplateCut.Visibility = True
@@ -397,23 +409,37 @@ class exportutils:
 		# Make pocket and path objects for each
 		pathObjects = []
 		for obj in objs.keys():
-			# Pocket in conventional mode, with 0.1mm allowance that we'll take off during the profiling
-			pocketObj = PathScripts.PathPocket.Create("pocket_%s" % obj.Label)
-			pocketObj.StepOver = 50
-			pocketObj.CutMode = "Conventional"
-			pocketObj.ExtraOffset = 0.1
-			pocketObj.Base = (faceplateCut, objs[obj] )
-			pocketObj.setExpression('StepDown', None)
-			pocketObj.StepDown = 4
-			pathObjects.append(pocketObj)
-			# And then profile nicely.
-			profileObj = PathScripts.PathProfile.Create("profile_%s" % obj.Label)
-			profileObj.Base = (faceplateCut, objs[obj] )
-			profileObj.setExpression('FinalDepth ', None)
-			profileObj.FinalDepth = -0.5
-			profileObj.setExpression('StepDown', None)
-			profileObj.StepDown = 3.5
-			pathObjects.append(profileObj)
+			# Check if there are multiple different depths we must cut. If so, we'll make a pair of 
+			# pocket/path objects for each different depth.
+			facesByDepth = {}
+			for faceName in objs[obj]:
+#				print(faceName, int(faceName[4:]) - 1)
+				face = faceplateCut.Shape.Faces[int(faceName[4:]) - 1]
+				depth = round(face.Vertexes[0].Z, 2)
+				if depth not in facesByDepth.keys():
+					facesByDepth[depth] = []
+				facesByDepth[depth].append(faceName)
+			
+			for depth in sorted(facesByDepth.keys()):
+				# Pocket in conventional mode, with 0.1mm allowance that we'll take off during the profiling
+				pocketObj = PathScripts.PathPocket.Create("pocket_%s_%d" % (obj.Label, depth))
+				pocketObj.StepOver = 50
+				pocketObj.CutMode = "Conventional"
+				pocketObj.ExtraOffset = 0.1
+				pocketObj.Base = (faceplateCut, facesByDepth[depth] )
+				pocketObj.FinalDepth = depth
+				pocketObj.setExpression('StepDown', None)
+				pocketObj.StepDown = 4
+				pathObjects.append(pocketObj)
+				# And then profile nicely.
+				profileObj = PathScripts.PathProfile.Create("profile_%s_%d" % (obj.Label, depth))
+				profileObj.Base = (faceplateCut, facesByDepth[depth] )
+				profileObj.setExpression('FinalDepth ', None)
+				profileObj.FinalDepth = depth
+				profileObj.setExpression('StepDown', None)
+				profileObj.StepDown = 3.5
+#				profileObj.HandleMultipleFeatures = u"Individually"
+				pathObjects.append(profileObj)
 
 		cncjob.recompute(True)
 
