@@ -79,51 +79,60 @@ def doBuildForFCStdFile(projPath)
 			tempName = "exported_${projName}.FCStd"
 			scriptName = "export-${projName}.py"
 
-			// Filenames that are created by the exportutils.py script or by us
-			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
-			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
-			diffFilename = "${projName}_${BUILD_NUMBER}_diff.png"
-			
-			// Friendly names of outputs which we may archive (renamed from the above).
-			archivedOutputGCodeFilename = "${projName}_${BUILD_NUMBER}.gcode"
-			archivedoutputScreenshotFilename = "${projName}_${BUILD_NUMBER}.png"
-			
 			// Now we can start FreeCAD and run our scripts on a copy of our design.
 			bat "copy ${sourceFilename} ${tempName}"
 			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
-			
-			// We should have some nice gcode now, and a screenshot. Rename them to include the build number before archiving them.
-			bat "copy ${outputGCodeFilename} ${archivedOutputGCodeFilename}"
-			bat "copy ${outputScreenshotFilename} ${archivedoutputScreenshotFilename}"
-			archiveArtifacts artifacts: archivedOutputGCodeFilename, onlyIfSuccessful: true
-			archiveArtifacts artifacts: archivedoutputScreenshotFilename, onlyIfSuccessful: true
 
-			// Make a 'diff' of the exported image against the previous successful build.
-			// The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
-			previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
-			if (previousScreenshotURL != null)
-			{
-				bat script: "curl --fail ${previousScreenshotURL} -o old.png"
-				// Remove the rapid moves (in red)
-				bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" -trim old2.png'
-				bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" -trim exported2.png"
-				// And create the diff.
-				bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -auto-level ${diffFilename}"
-				
-				// We count the number of blue and red pixels. If there are none, then there are no changes in this file at all.
-				$newPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(0,0,255)\" -format \"%%[fx:w*h*mean]\" info:")
-				$oldPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(219,0,0)\" -format \"%%[fx:w*h*mean]\" info:")
-				
-				echo "Newly-added   pixel count: ${$newPixels.trim()}"
-				echo "Newly-removed pixel count: ${$oldPixels.trim()}"
-				
-				if ($newPixels.trim() != "0" || $oldPixels.trim() != "0")
-				{
-					archiveArtifacts artifacts: diffFilename, onlyIfSuccessful: true
-				}
-			}
+			// Filenames that are created by the exportutils.py script
+			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
+			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
+
+			archiveGCodeAndScreenshotFiles(projName ,outputGCodeFilename, outputScreenshotFilename)
 		}
 	}
+}
+
+def archiveGCodeAndScreenshotFiles(projName, outputPrefix)
+{
+    // Source files, which already exist
+    outputGCodeFilename = "${outputPrefix}.gcode"
+    outputScreenshotFilename = "${outputPrefix}.png"
+
+    // Friendly names of outputs which we may archive (renamed from our source).
+    archivedOutputGCodeFilename = "${projName}_${BUILD_NUMBER}.gcode"
+    archivedoutputScreenshotFilename = "${projName}_${BUILD_NUMBER}.png"
+    diffFilename = "${projName}_${BUILD_NUMBER}_diff.png"
+
+    // We should have some nice gcode now, and a screenshot. Rename them to include the build number before archiving them.
+    bat "copy ${outputGCodeFilename} ${archivedOutputGCodeFilename}"
+    bat "copy ${outputScreenshotFilename} ${archivedoutputScreenshotFilename}"
+    archiveArtifacts artifacts: archivedOutputGCodeFilename, onlyIfSuccessful: true
+    archiveArtifacts artifacts: archivedoutputScreenshotFilename, onlyIfSuccessful: true
+
+    // Make a 'diff' of the exported image against the previous successful build.
+    // The new 'diff' image will have the original image in green, new things in blue, and old things (no longer present) in red.
+    previousScreenshotURL = locateURLForPreviousArtifact(archivedoutputScreenshotFilename)
+    if (previousScreenshotURL != null)
+    {
+        bat script: "curl --fail ${previousScreenshotURL} -o old.png"
+        // Remove the rapid moves (in red)
+        bat script: 'magick old.png -fill white -fuzz 60%% -opaque "rgb(255,0,0)" -trim old2.png'
+        bat script: "magick ${outputScreenshotFilename} -fill white -fuzz 60%% -opaque \"rgb(255,0,0)\" -trim exported2.png"
+        // And create the diff.
+        bat script: "magick old2.png exported2.png -compose difference  -metric AE -fuzz 15%% -compare -background white -alpha remove -alpha off -auto-level ${diffFilename}"
+
+        // We count the number of blue and red pixels. If there are none, then there are no changes in this file at all.
+        $newPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(0,0,255)\" -format \"%%[fx:w*h*mean]\" info:")
+        $oldPixels = bat(returnStdout: true, script: "@magick convert ${diffFilename} -fill black -fuzz 50%% +opaque \"rgb(219,0,0)\" -format \"%%[fx:w*h*mean]\" info:")
+
+        echo "Newly-added   pixel count: ${$newPixels.trim()}"
+        echo "Newly-removed pixel count: ${$oldPixels.trim()}"
+
+        if ($newPixels.trim() != "0" || $oldPixels.trim() != "0")
+        {
+            archiveArtifacts artifacts: diffFilename, onlyIfSuccessful: true
+        }
+    }
 }
 
 return this
