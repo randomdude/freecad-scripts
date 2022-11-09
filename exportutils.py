@@ -409,16 +409,20 @@ class exportutils:
 		# Make pocket and path objects for each
 		pathObjects = []
 		for obj in objs.keys():
-			# Check if there are multiple different depths we must cut. If so, we'll make a pair of 
-			# pocket/path objects for each different depth.
+			# Check if there are multiple different depths we must cut. If so, we'll make a pair of
+			# pocket/path objects for each different depth. For each object, store the lowest depth
+			# that is required to be cut.
 			facesByDepth = {}
 			for faceName in objs[obj]:
-#				print(faceName, int(faceName[4:]) - 1)
 				face = faceplateCut.Shape.Faces[int(faceName[4:]) - 1]
-				depth = round(face.Vertexes[0].Z, 2)
-				if depth not in facesByDepth.keys():
-					facesByDepth[depth] = []
-				facesByDepth[depth].append(faceName)
+				minDepth = 1000
+				for v in face.Vertexes:
+					depth = round(v.Z, 2)
+					if depth < minDepth:
+						minDepth = depth
+				if minDepth not in facesByDepth.keys():
+					facesByDepth[minDepth] = []
+				facesByDepth[minDepth].append(faceName)
 			
 			for depth in sorted(facesByDepth.keys()):
 				# Pocket in conventional mode, with 0.1mm allowance that we'll take off during the profiling
@@ -446,8 +450,6 @@ class exportutils:
 		# Post-process the job now
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith(pathObjects, cncjob, False)
-#		with open("%s-mill%s.gcode" % (filenamePrefix, filenameSuffix), 'w') as f:
-#			f.write(gcode)
 
 	def getObjectByLabel(objName):
 		toRet = FreeCAD.ActiveDocument.getObjectsByLabel(objName)
