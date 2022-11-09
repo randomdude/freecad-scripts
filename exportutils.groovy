@@ -53,45 +53,6 @@ String locateURLForPreviousArtifact(thisArtifact)
 	return toRet
 }
 
-def doBuildForFCStdFile(projPath)
-{
-	stage("Generating gcode")
-	{
-		// If this is in a subdir, descend into it, and a copy the exportutils.py script into it too.
-		projPathEl = "${projPath}".split('\\\\')
-		if (projPathEl.length == 1)
-		{
-			projDir = '.'
-			projName = projPath
-		}
-		else
-		{
-			projDir = projPathEl[0]
-			projName = projPathEl[1]
-		}
-
-		scriptName = "export-${projName}.py"
-		bat "copy freecad-scripts\\exportutils.py ${projDir}\\"
-
-		dir(projDir)
-		{
-			sourceFilename = "${projName}.FCStd"
-			tempName = "exported_${projName}.FCStd"
-			scriptName = "export-${projName}.py"
-
-			// Now we can start FreeCAD and run our scripts on a copy of our design.
-			bat "copy ${sourceFilename} ${tempName}"
-			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
-
-			// Filenames that are created by the exportutils.py script
-			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
-			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
-
-			archiveGCodeAndScreenshotFiles(projName ,outputGCodeFilename, outputScreenshotFilename)
-		}
-	}
-}
-
 def archiveGCodeAndScreenshotFiles(projName, outputPrefix)
 {
     // Source files, which already exist
@@ -133,6 +94,45 @@ def archiveGCodeAndScreenshotFiles(projName, outputPrefix)
             archiveArtifacts artifacts: diffFilename, onlyIfSuccessful: true
         }
     }
+}
+
+def doBuildForFCStdFile(projPath)
+{
+	stage("Generating gcode")
+	{
+		// If this is in a subdir, descend into it, and a copy the exportutils.py script into it too.
+		projPathEl = "${projPath}".split('\\\\')
+		if (projPathEl.length == 1)
+		{
+			projDir = '.'
+			projName = projPath
+		}
+		else
+		{
+			projDir = projPathEl[0]
+			projName = projPathEl[1]
+		}
+
+		scriptName = "export-${projName}.py"
+		bat "copy freecad-scripts\\exportutils.py ${projDir}\\"
+
+		dir(projDir)
+		{
+			sourceFilename = "${projName}.FCStd"
+			tempName = "exported_${projName}.FCStd"
+			scriptName = "export-${projName}.py"
+
+			// Now we can start FreeCAD and run our scripts on a copy of our design.
+			bat "copy ${sourceFilename} ${tempName}"
+			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
+
+			// Filenames that are created by the exportutils.py script
+			outputGCodeFilename = "exported_${projName}.gcode".replace('-', '_')
+			outputScreenshotFilename = "exported_${projName}.png".replace('-', '_')
+
+			archiveGCodeAndScreenshotFiles(projName, outputGCodeFilename, outputScreenshotFilename)
+		}
+	}
 }
 
 return this
