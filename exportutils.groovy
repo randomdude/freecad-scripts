@@ -126,7 +126,7 @@ def doBuildForFCStdFile(projPath)
 			bat "copy ${sourceFilename} ${tempName}"
 			$s = bat returnStatus: true, script: "\"C:\\Program Files\\FreeCAD 0.19\\bin\\FreeCAD.exe\" --log-file ${WORKSPACE}\\freecad.log ${tempName} ${scriptName}"
 
-			outputPrefix = "exported_${projName}.replace('-', '_')
+			outputPrefix = "exported_${projName}".replace('-', '_')
 			archiveGCodeAndScreenshotFiles(projName, outputPrefix)
 		}
 	}
