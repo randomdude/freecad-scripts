@@ -288,12 +288,21 @@ class exportutils:
 			retries = 10
 			while True:
 				try:
+					# Find the main window, and the MDI area in it
 					window = FreeCADGui.getMainWindow()
 					mdi = window.findChild(QtGui.QMdiArea)
-					sub = mdi.activeSubWindow()
-					if sub is None:
+					# Search sub-windows to find ours. Note that we can't use .activeSubWindow here, since it sometimes
+					# returns None (perhaps the sub-window isn't always focused during our script). We just look at all
+					# sub-windows and discard the one titled 'Start page'.
+					subWindows = list(filter(lambda x: x.windowTitle() != "Start page", mdi.subWindowList()))
+					if len(subWindows) == 0:
+						if retries == 0:
+							raise Exception("Can't find sub window")
 						retries = retries - 1
 						continue
+					if len(subWindows) > 1:
+						raise Exception("Multiple sub-windows found")
+					sub = subWindows[0]
 					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
 					sub.setParent(None, QtCore.Qt.Window)
 					sub.showFullScreen()
@@ -355,7 +364,7 @@ class exportutils:
 			# We're only interested in faces which are perpendicular to Z.
 			norm = abs(faceplateCut.Shape.Faces[faceIdx - 1].normalAt(0,0).z)
 			if norm > 0.01:
-				print("face Face%d: Doesn't point up/down" % faceIdx)
+#				print("face Face%d: Doesn't point up/down" % faceIdx)
 				continue
 			for obj in objs:
 				allInside = True
@@ -364,10 +373,10 @@ class exportutils:
 						allInside = False
 						break
 				if allInside:
-					print("Face%d selected" % faceIdx)
+#					print("Face%d selected" % faceIdx)
 					objs[obj].append("Face%d" % faceIdx)
-				else:
-					print("Face%d not all inside any object" % faceIdx)
+#				else:
+#					print("Face%d not all inside any object" % faceIdx)
 		# Do a quick sanity check, each object should have at least one face
 		for obj in objs:
 			if len(objs[obj]) == 0:
