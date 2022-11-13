@@ -1,17 +1,26 @@
+from typing import Union, List, Any, Dict, Optional
+
 import FreeCAD
 import FreeCADGui
 import Part
 
 import CompoundTools.Explode
+from TestPartApp import App
 
 from panel import multiplejoins
+from panel.multiplejoins import MultipleJoinGroup
+
 from lasercut.material import MaterialProperties
 from lasercut.tabproperties import TabProperties
 
-import PathScripts.PathProfile
-from PathScripts import PathJobGui, PathInspect
 from PathScripts.PathPost import CommandPathPost
-import PathScripts.PathJob 
+import PathScripts.PathProfile
+import PathScripts.PathJob
+import PathScripts.PathToolBit
+import PathScripts.PathToolController
+import PathScripts.PathSetupSheet
+import PathScripts.PathPocket
+import PathScripts.PathDrilling
 
 import math
 
@@ -26,32 +35,51 @@ from PySide import QtCore,QtGui
 #
 # The values are taken from the suggested values for my laser cutter, ie
 # https://lionsforge.com.sg/wp-content/uploads/2019/09/CraftLaser-Settings-Guide.pdf
+
 class cutterMaterial:
-	def __init__(self, thickness, feedSpeed, rapidSpeed, kerf = 0.25):
+	def __init__(self, thickness: float, feedSpeed: float, rapidSpeed: float, kerf: float = 0.25) -> None:
 		self.thickness = thickness
 		self.rapidSpeed =  rapidSpeed
 		self.feedSpeed  = feedSpeed
 		self.kerf = kerf
-	
-	def bamboo(thickness, kerf = 0.25):
+
+	@staticmethod
+	def bamboo(thickness: Union[int,float], kerf: float = 0.25):
+		if isinstance(thickness, int):
+			thickness = float(thickness)
+
 		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
-	def mdf(thickness, kerf = 0.25):
+	@staticmethod
+	def mdf(thickness: Union[int,float], kerf: float = 0.25):
+		if isinstance(thickness, int):
+			thickness = float(thickness)
+
 		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
 
-	def acrylic(thickness, kerf = 0.20):
+	@staticmethod
+	def acrylic(thickness: Union[int,float], kerf: float = 0.20) -> object:
+		thicknessFloat = thickness
+		if isinstance(thickness, int):
+			thicknessFloat = float(thickness)
 		speeds = { 
-			1: 2.5, 
-			2: 2.0, 
-			3: 1.3,
-			5: 1.0
+			1.0: 2.5,
+			2.0: 2.0,
+			3.0: 1.3,
+			5.0: 1.0
 		}
-		if thickness not in speeds.keys:
-			raise Exception("Speed multiplier for acrylic at thickness " + thickness + " mm not defined")
-		return cutterMaterial(thickness, (300 / 60) * speeds[thickness], 3000 / 60, kerf)
+		if thicknessFloat not in speeds.keys:
+			raise Exception("Speed multiplier for acrylic at thickness " + str(thicknessFloat) + " mm not defined")
+		return cutterMaterial(thicknessFloat, (300 / 60) * speeds[thicknessFloat], 3000 / 60, kerf)
 
 class tabbedObjectBuilder:
-	def __init__(self, objectNames, material):
+	objectNames: List[str]
+	material: cutterMaterial
+
+	groupJoin: App.DocumentObject
+	joinGroup: MultipleJoinGroup
+
+	def __init__(self, objectNames: List[str], material: cutterMaterial) -> None:
 		self.objectNames = objectNames
 		self.material = material
 
@@ -61,26 +89,32 @@ class tabbedObjectBuilder:
 		self.joinGroup = multiplejoins.MultipleJoinGroup(self.groupJoin)
 
 		# We'll add all the objects we'll be adding tabs to..
-		for obj in map(lambda x: doc.getObjectsByLabel(x)[0], objectNames):
-			material = MaterialProperties(type=MaterialProperties.TYPE_LASER_CUT, name=obj.Name, label=obj.Label, freecad_object=obj, thickness = self.material.thickness)
-			# We compensate for this later on, in the gcode generation step, not here.
-			material.laser_beam_diameter = 0 
-			self.groupJoin.parts.append(material)
+		for objList in map(lambda x: doc.findObjects(Label = x), objectNames):
+			for obj in objList:
+				material = MaterialProperties(type=MaterialProperties.TYPE_LASER_CUT, name=obj.Name, label=obj.Label, freecad_object=obj, thickness = self.material.thickness)
+				# We compensate for this later on, in the gcode generation step, not here.
+				material.laser_beam_diameter = 0
+				self.groupJoin.parts.append(material)
 	
 	# Given the name of an object and a normal, add tabs to all faces which are pointing in the same direction as that normal.
 	# Optionally, specify 'requiredX' in order to only add faces with the specified X value.
-	def createTabsByFaceNormal(self, objectName, normalToFind, requiredX = None, requiredY = None, requiredZ = None, tabWidth = 1, tabNumber = 2, tabShift = 0.0, tabRatio = 1.0, testFunc = None):
+	def createTabsByFaceNormal(self, objectName: str, normalToFind, requiredX = None, requiredY = None, requiredZ = None, tabWidth = 1, tabNumber = 2, tabShift = 0.0, tabRatio = 1.0, testFunc = None):
 		obj = FreeCAD.ActiveDocument.getObjectsByLabel(objectName)[0]
 		faceidx = 1
 		for face in obj.Shape.Faces:
+			facename = "Face%d" % faceidx
 			if len(face.Vertexes) > 2:
 				# Does this face point in the right direction?
 				if abs(face.normalAt(0,0) - normalToFind).Length < 0.01:
 					# It does! Is there an X-filter requested? If so, apply that.
-					if (requiredX is None or abs(face.Vertexes[0].X - requiredX) < 0.01) and (requiredZ is None or abs(face.Vertexes[0].Z - requiredZ) < 0.01) and (requiredY is None or abs(face.Vertexes[0].Y - requiredY) < 0.01):
+					if 	(requiredX is None or abs(face.Vertexes[0].X - requiredX) < 0.01) and \
+						(requiredZ is None or abs(face.Vertexes[0].Z - requiredZ) < 0.01) and \
+						(requiredY is None or abs(face.Vertexes[0].Y - requiredY) < 0.01):
 						# And check for a condition-testing function.
 						if testFunc is None or testFunc(face):
-							tabProps = TabProperties(freecad_face=face, freecad_obj_name=obj.Name, face_name="Face%d" % faceidx, tabs_number = tabNumber, tabs_width = tabWidth, tabs_shift = tabShift, interval_ratio = tabRatio, tab_type=TabProperties.TYPE_TAB)
+							tabProps = TabProperties(freecad_face=face, freecad_obj_name=obj.Name, face_name=facename,
+													 tabs_number = tabNumber, tabs_width = tabWidth, tabs_shift = tabShift, interval_ratio = tabRatio,
+													 tab_type=TabProperties.TYPE_TAB)
 							self.groupJoin.faces.append(tabProps)
 			faceidx = faceidx + 1
 
@@ -117,8 +151,13 @@ class tabbedObjectBuilder:
 
 		return tabbedObjects
 
+
 class exportutils:
-	def __init__(self, objectsToCut, material):
+	objectsToCut: List[App.DocumentObject]
+	gcode: Optional[str]
+	allowZMoves: bool
+
+	def __init__(self, objectsToCut: List[Union[str, App.DocumentObject]], material: cutterMaterial) -> None:
 		self.material = material
 		# If anything in objectsToCut is actually a name, assume it is the label of an object and find/add that object.
 		self.objectsToCut = []
@@ -131,11 +170,23 @@ class exportutils:
 		self.gcode = None
 		self.allowZMoves = False
 
+	def setProperty(self, o: App.DocumentObject, propName: str, propVal: Any):
+		o.setExpression(propName, None)
+		setattr(o, propName, propVal)
+
+	def findLowestZForFace(self, face):
+		minDepth = None
+		for v in face.Vertexes:
+			depth = round(v.Z, 2)
+			if minDepth is None or depth < minDepth:
+				minDepth = depth
+		return minDepth
+
 	def rotateAndPositionAllObjectsOnZ(self):
 		for obj in self.objectsToCut:
 			self.rotateAndPositionObjectOnZ(obj)
 
-	def rotateAndPositionObjectOnZ(self, obj):
+	def rotateAndPositionObjectOnZ(self, obj: App.DocumentObject) -> None:
 		obj.Placement.Rotation.Angle = 0
 		# Recompute if neccessary, to generate bounding boxes
 		if obj.MustExecute:
@@ -163,18 +214,16 @@ class exportutils:
 				foundFace = face
 				break
 			faceidx = faceidx + 1
+		if foundFace is None:
+			raise Exception("Can't find any faces parallel to Z-axis")
 
 		# Now align this face with Z=0.
-		obj.Placement.Base.z = -face.Vertexes[0].Z + obj.Shape.BoundBox.ZLength
+		obj.Placement.Base.z = -foundFace.Vertexes[0].Z + obj.Shape.BoundBox.ZLength
 		obj.recompute()
 
-	def placeInRow(self, objectsToPlace, startPosX = 0, startPosY = 0, spaceBetweenObjects = 1):
+	def placeInRow(self, objectsToPlace : List[App.DocumentObject], startPosX: float = 0, startPosY: float = 0, spaceBetweenObjects: float = 1):
 		pos = startPosX
 		for obj in objectsToPlace:
-#			# If this object is wider (in X) than it is in Y, rotate it around Z so it doesn't waste space.
-#			if obj.Shape.BoundBox.XLength > obj.Shape.BoundBox.YLength:
-#				# Rotate around Z.
-#				obj.Placement.Rotation = obj.Placement.Rotation.multiply(FreeCAD.Rotation(FreeCAD.Base.Vector(0,0,1),90))
 			obj.Placement.Base.x = obj.Placement.Base.x - obj.Shape.BoundBox.XMin + pos
 			obj.Placement.Base.y = obj.Placement.Base.y - obj.Shape.BoundBox.YMin + startPosY
 			pos = obj.Shape.BoundBox.XMax + spaceBetweenObjects
@@ -182,14 +231,15 @@ class exportutils:
 	def execute(self):
 		for x in self.objectsToCut:
 			x.recompute()
+
 		# Ensure none of our objects are outside the printable area
-		minX = min(map(lambda x: x.Shape.BoundBox.XMin, self.objectsToCut))
-		minY = min(map(lambda x: x.Shape.BoundBox.YMin, self.objectsToCut))
+		minX = min(map(lambda objectToCut: objectToCut.Shape.BoundBox.XMin, self.objectsToCut))
+		minY = min(map(lambda objectToCut: objectToCut.Shape.BoundBox.YMin, self.objectsToCut))
 		if minX < 0 or minY < 0:
 			raise Exception("Objects are not all in positive X and Y space")
 
 		## make job object and set some basic properties
-		cncjob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
+		cncjob : PathScripts.PathJob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
 		cncjob.PostProcessor = 'lcnclaser'
 		cncjob.PostProcessorArgs = " --no-show-editor "
 		if self.allowZMoves == False:
@@ -235,10 +285,8 @@ class exportutils:
 		cutObjs.Side = "Outside"
 		# We set start and final depth the same so that we get a 2D laser-style output.
 		cutObjs.ToolController = toolController
-		cutObjs.setExpression('FinalDepth', None)
-		cutObjs.setExpression('StartDepth', None)
-		cutObjs.FinalDepth = self.material.thickness
-		cutObjs.StartDepth = self.material.thickness
+		self.setProperty(cutObjs, 'FinalDepth', self.material.thickness)
+		self.setProperty(cutObjs, 'StartDepth', self.material.thickness)
 
 		cncjob.recompute(True)
 
@@ -283,6 +331,7 @@ class exportutils:
 		pg.SetUnsigned("BackgroundColor3", 0xffffffff)
 
 		sub = None
+		mdi = None
 		try:
 			# maximise the window so we get the best quality we can
 			retries = 10
@@ -326,10 +375,12 @@ class exportutils:
 			# And restore the maximised window.
 			if sub is not None:
 				sub.setWindowFlags(sub.windowFlags() & ~QtCore.Qt.Window)
-				mdi.addSubWindow(sub)
+				if mdi is not None:
+					mdi.addSubWindow(sub)
 				sub.update()
 				sub.showNormal()
 
+	@staticmethod
 	def deleteCADObjects():
 		# Clean up and leftover objects from previous CNC'ing
 		doc = FreeCAD.ActiveDocument
@@ -353,9 +404,10 @@ class exportutils:
 		exportutils.deleteCADObjects()
 
 		# Generate a dict keyed by object. This will contain faces of each feature we'll be cutting.
-		objs = {}
+		facesByObject: Dict[App.DocumentObject, List[str]] = {}
+		obj: App.DocumentObject
 		for obj in self.objectsToCut:
-			objs[obj] = []
+			facesByObject[obj] = []
 
 		# Group faces according to the object they're in
 		faceIdx = 0
@@ -366,7 +418,8 @@ class exportutils:
 			if norm > 0.01:
 #				print("face Face%d: Doesn't point up/down" % faceIdx)
 				continue
-			for obj in objs:
+			# We are grouping by object, so find any objects that this face is inside.
+			for obj in facesByObject:
 				allInside = True
 				for v in face.Vertexes:
 					if obj.Shape.isInside(FreeCAD.Vector(v.X, v.Y, v.Z), 0.1, True) == False:
@@ -374,12 +427,12 @@ class exportutils:
 						break
 				if allInside:
 #					print("Face%d selected" % faceIdx)
-					objs[obj].append("Face%d" % faceIdx)
+					facesByObject[obj].append("Face%d" % faceIdx)
 #				else:
 #					print("Face%d not all inside any object" % faceIdx)
 		# Do a quick sanity check, each object should have at least one face
-		for obj in objs:
-			if len(objs[obj]) == 0:
+		for obj in facesByObject:
+			if len(facesByObject[obj]) == 0:
 				raise Exception("Object %s has no faces that intersect object to be cut" % obj.Label )
 
 		if upsideDown:
@@ -393,7 +446,7 @@ class exportutils:
 		cncjob.PostProcessorArgs = "--no-show-editor"
 
 		# Set stock offset to zero 
-		stock = doc.getObjectsByLabel('Stock')[0]
+		stock = self.getObjectByLabel('Stock')
 		stock.ExtXneg = 0
 		stock.ExtXpos = 0
 		stock.ExtYneg = 0
@@ -417,18 +470,14 @@ class exportutils:
 
 		# Make pocket and path objects for each
 		pathObjects = []
-		for obj in objs.keys():
+		for obj in facesByObject.keys():
 			# Check if there are multiple different depths we must cut. If so, we'll make a pair of
 			# pocket/path objects for each different depth. For each object, store the lowest depth
 			# that is required to be cut.
 			facesByDepth = {}
-			for faceName in objs[obj]:
+			for faceName in facesByObject[obj]:
 				face = faceplateCut.Shape.Faces[int(faceName[4:]) - 1]
-				minDepth = 1000
-				for v in face.Vertexes:
-					depth = round(v.Z, 2)
-					if depth < minDepth:
-						minDepth = depth
+				minDepth = self.findLowestZForFace(face)
 				if minDepth not in facesByDepth.keys():
 					facesByDepth[minDepth] = []
 				facesByDepth[minDepth].append(faceName)
@@ -440,17 +489,14 @@ class exportutils:
 				pocketObj.CutMode = "Conventional"
 				pocketObj.ExtraOffset = 0.1
 				pocketObj.Base = (faceplateCut, facesByDepth[depth] )
-				pocketObj.FinalDepth = depth
-				pocketObj.setExpression('StepDown', None)
-				pocketObj.StepDown = 4
+				self.setProperty(pocketObj, 'FinalDepth', depth)
+				self.setProperty(pocketObj, 'StepDown', 4)
 				pathObjects.append(pocketObj)
 				# And then profile nicely.
 				profileObj = PathScripts.PathProfile.Create("profile_%s_%d" % (obj.Label, depth))
 				profileObj.Base = (faceplateCut, facesByDepth[depth] )
-				profileObj.setExpression('FinalDepth ', None)
-				profileObj.FinalDepth = depth
-				profileObj.setExpression('StepDown', None)
-				profileObj.StepDown = 3.5
+				self.setProperty(profileObj, 'FinalDepth', depth)
+				self.setProperty(profileObj, 'StepDown', 3.5)
 #				profileObj.HandleMultipleFeatures = u"Individually"
 				pathObjects.append(profileObj)
 
@@ -460,7 +506,8 @@ class exportutils:
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith(pathObjects, cncjob, False)
 
-	def getObjectByLabel(objName):
+	@staticmethod
+	def getObjectByLabel(objName: str) -> App.DocumentObject:
 		toRet = FreeCAD.ActiveDocument.getObjectsByLabel(objName)
 		if len(toRet) > 0:
 			return toRet[0]
@@ -492,10 +539,24 @@ class exportutils:
 		stock.ExtZneg = 0
 		stock.ExtZpos = 0
 
-		drillObj = PathScripts.PathDrilling.Create("drills")
+		# Select faces to cut
+		facesToCut = []
+		faceIdx = 0
+		for face in faceplateCut.Shape.Faces:
+			faceIdx = faceIdx + 1
+			# We only want faces perpendicular to Z.
+			norm = abs(face.normalAt(0,0).z)
+			if norm > 0.01:
+				continue
+			# And we want only faces which touch the Z=0 plane.
+			if abs(face.BoundBox.ZMin) < 0.1 or abs(face.BoundBox.ZMax) < 0.1:
+				facesToCut.append("Face%d" % faceIdx)
 
+		drillObj = PathScripts.PathDrilling.Create("drills")
+		drillObj.Base = [(faceplateCut, facesToCut)]
 		cncjob.recompute(True)
 
 		# Post-process the job now
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith([drillObj], cncjob, False)
+
