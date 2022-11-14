@@ -91,6 +91,9 @@ class tabbedObjectBuilder:
 		# We'll add all the objects we'll be adding tabs to..
 		for objList in map(lambda x: doc.findObjects(Label = x), objectNames):
 			for obj in objList:
+				# Since doc.findObjects does a substring search, we'll need to filter ourselves too.
+				if obj.Label not in objectNames:
+					continue
 				material = MaterialProperties(type=MaterialProperties.TYPE_LASER_CUT, name=obj.Name, label=obj.Label, freecad_object=obj, thickness = self.material.thickness)
 				# We compensate for this later on, in the gcode generation step, not here.
 				material.laser_beam_diameter = 0
