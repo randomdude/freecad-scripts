@@ -539,6 +539,22 @@ class exportutils:
 		stock.ExtZneg = 0
 		stock.ExtZpos = 0
 
+		# Make a tool
+		cutter = PathScripts.PathToolBit.Factory.Create('cutter')
+		toolController = PathScripts.PathToolController.Create('toolController')
+		toolController.Tool = cutter
+		cutter.Diameter = self.material.kerf
+#		cutter.SpindleSpeed = 7500
+		cutter.Label = "%dmm twist drill" % cutter.Diameter
+
+		# And set up speeds and feeds.
+		cncjob.SetupSheet.HorizRapid = self.material.rapidSpeed
+		cncjob.SetupSheet.VertRapid = self.material.rapidSpeed
+		toolController.HorizFeed = self.material.feedSpeed
+		toolController.VertFeed  = self.material.feedSpeed
+
+		cncjob.Tools.Group = [ toolController ]
+
 		# Select faces to cut
 		facesToCut = []
 		faceIdx = 0
