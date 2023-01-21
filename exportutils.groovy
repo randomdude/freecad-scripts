@@ -109,8 +109,8 @@ def doBuildForFCStdFile(projPath)
 		}
 		else
 		{
-			projDir = projPathEl[0]
-			projName = projPathEl[1]
+			projDir = projPathEl[0..-2].join('\\')
+			projName = projPathEl[-1]
 		}
 
 		scriptName = "export-${projName}.py"
