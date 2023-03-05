@@ -128,6 +128,13 @@ def doBuildForFCStdFile(projPath)
 
 			outputPrefix = "exported_${projName}".replace('-', '_')
 			archiveGCodeAndScreenshotFiles(projName, outputPrefix)
+
+			# Also see if engravings are present.
+			$s = bat returnStatus: true, script: "dir \"${outputPrefix}_engravings.gcode\""
+			if ($s == 0)
+			{
+				archiveGCodeAndScreenshotFiles(projName + "_engravings", outputPrefix + "_engravings")
+			}
 		}
 	}
 }
