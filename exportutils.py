@@ -312,7 +312,7 @@ class exportutils:
 		if filename is None:
 			filename = FreeCAD.ActiveDocument.Name + ".gcode"
 		if append:
-			with open(filename, 'w+') as f:
+			with open(filename, 'a') as f:
 				f.write(self.generateGCode())
 		else:
 			with open(filename, 'w') as f:
