@@ -37,11 +37,12 @@ from PySide import QtCore,QtGui
 # https://lionsforge.com.sg/wp-content/uploads/2019/09/CraftLaser-Settings-Guide.pdf
 
 class cutterMaterial:
-	def __init__(self, thickness: float, feedSpeed: float, rapidSpeed: float, kerf: float = 0.25) -> None:
+	def __init__(self, thickness: float, feedSpeed: float, rapidSpeed: float, kerf: float = 0.25, cutIntensity = 255) -> None:
 		self.thickness = thickness
 		self.rapidSpeed =  rapidSpeed
 		self.feedSpeed  = feedSpeed
 		self.kerf = kerf
+		self.cutIntensity = cutIntensity
 
 	@staticmethod
 	def bamboo(thickness: Union[int,float], kerf: float = 0.25):
@@ -244,9 +245,9 @@ class exportutils:
 		## make job object and set some basic properties
 		cncjob : PathScripts.PathJob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
 		cncjob.PostProcessor = 'lcnclaser'
-		cncjob.PostProcessorArgs = " --no-show-editor "
+		cncjob.PostProcessorArgs = f" --no-show-editor --cut-intensity {self.material.cutIntensity} "
 		if self.allowZMoves == False:
-			cncjob.PostProcessorArgs = cncjob.PostProcessorArgs + " --suppress-z "
+			cncjob.PostProcessorArgs += " --suppress-z "
 
 		# We can set up our tool now, and a toolcontroller to control it.
 		lasertool = PathScripts.PathToolBit.Factory.Create('laserbeam')
@@ -271,7 +272,7 @@ class exportutils:
 				if abs((face.normalAt(0,0) - FreeCAD.Vector(0, 0, 1)).Length < 0.1):
 					# And is it the top one?
 					if abs(face.Vertexes[0].Z - self.material.thickness) < 0.01:
-						# It does, so profile this.
+						# It is the top one, so we are likely going to profile this.
 						toCut.append((obj, 'Face%d' % faceIdx))
 					else:
 						# Check if it is at the bottom. If not, alert the user - it may be a situation the 2D laser cutter cannot cut.
@@ -307,13 +308,21 @@ class exportutils:
 			raise Exception(".execute not called before attempt to save gcode")
 		return self.gcode
 
-	def saveGCode(self, filename = None):
+	def saveGCode(self, filename = None, append = False):
 		if filename is None:
 			filename = FreeCAD.ActiveDocument.Name + ".gcode"
-		with open(filename, 'w') as f:
-			f.write(self.generateGCode())
+		if append:
+			with open(filename, 'w+') as f:
+				f.write(self.generateGCode())
+		else:
+			with open(filename, 'w') as f:
+				f.write(self.generateGCode())
 
-	def saveScreenshotOfPath(self, filename = None):
+	def saveScreenshotOfPath(self, filename = None, append = False):
+		# TODO: append support!
+		if append:
+			return
+
 		if self.gcode is None:
 			raise Exception(".execute not called before attempt to save screenshot")
 
