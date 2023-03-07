@@ -45,21 +45,21 @@ class cutterMaterial:
 		self.cutIntensity = cutIntensity
 
 	@staticmethod
-	def bamboo(thickness: Union[int,float], kerf: float = 0.25):
+	def bamboo(thickness: Union[int,float], kerf: float = 0.25, cutIntensity = 255):
 		if isinstance(thickness, int):
 			thickness = float(thickness)
 
-		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf, cutIntensity = cutIntensity)
 
 	@staticmethod
-	def mdf(thickness: Union[int,float], kerf: float = 0.25):
+	def mdf(thickness: Union[int,float], kerf: float = 0.25, cutIntensity = 255):
 		if isinstance(thickness, int):
 			thickness = float(thickness)
 
-		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf)
+		return cutterMaterial(thickness, feedSpeed = (300 / 60) * 1.7, rapidSpeed = 3000 / 60, kerf = kerf, cutIntensity= cutIntensity)
 
 	@staticmethod
-	def acrylic(thickness: Union[int,float], kerf: float = 0.20) -> object:
+	def acrylic(thickness: Union[int,float], kerf: float = 0.20, cutIntensity = 255) -> object:
 		thicknessFloat = thickness
 		if isinstance(thickness, int):
 			thicknessFloat = float(thickness)
@@ -71,7 +71,7 @@ class cutterMaterial:
 		}
 		if thicknessFloat not in speeds.keys:
 			raise Exception("Speed multiplier for acrylic at thickness " + str(thicknessFloat) + " mm not defined")
-		return cutterMaterial(thicknessFloat, (300 / 60) * speeds[thicknessFloat], 3000 / 60, kerf)
+		return cutterMaterial(thicknessFloat, (300 / 60) * speeds[thicknessFloat], 3000 / 60, kerf, cutIntensity)
 
 class tabbedObjectBuilder:
 	objectNames: List[str]
