@@ -361,9 +361,9 @@ class exportutils:
 							raise Exception("Can't find sub window")
 						retries = retries - 1
 						continue
-					if len(subWindows) > 1:
-						raise Exception("Multiple sub-windows found")
-					sub = subWindows[0]
+					# We want the subwindow which contains the name of our document.
+					found = list(filter(lambda x: x.windowTitle.find(doc.Name) == 0, subWindows))
+					sub = found[0]
 					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
 					sub.setParent(None, QtCore.Qt.Window)
 					sub.showFullScreen()
