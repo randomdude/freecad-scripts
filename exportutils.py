@@ -590,3 +590,15 @@ class exportutils:
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith([drillObj], cncjob, False)
 
+
+def closeOtherWindows():
+	docName = FreeCAD.ActiveDocument.Name
+	docName = docName.replace("_", "-")
+
+	window = FreeCADGui.getMainWindow()
+	mdi = window.findChild(QtGui.QMdiArea)
+	subWindows = list(filter(lambda x: x.windowTitle() != "Start page", mdi.subWindowList()))
+	for x in subWindows:
+		if x.windowTitle().find(docName) != 0:
+			x.close()
+
