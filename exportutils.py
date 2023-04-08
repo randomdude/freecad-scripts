@@ -361,11 +361,9 @@ class exportutils:
 							raise Exception("Can't find sub window")
 						retries = retries - 1
 						continue
-					# We want the subwindow which contains the name of our document.
-					docName = FreeCAD.ActiveDocument.Name
-					docName = docName.replace("_", "-")
-					found = list(filter(lambda x: x.windowTitle().find(docName) == 0, subWindows))
-					sub = found[0]
+					if len(subWindows) > 1:
+						raise Exception("Multiple windows open, please close some")
+					sub = subWindows[0]
 					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
 					sub.setParent(None, QtCore.Qt.Window)
 					sub.showFullScreen()
