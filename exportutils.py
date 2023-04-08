@@ -362,7 +362,9 @@ class exportutils:
 						retries = retries - 1
 						continue
 					# We want the subwindow which contains the name of our document.
-					found = list(filter(lambda x: x.windowTitle().find(FreeCAD.ActiveDocument.Name) == 0, subWindows))
+					docName = FreeCAD.ActiveDocument.Name
+					docName = docName.replace("_", "-")
+					found = list(filter(lambda x: x.windowTitle().find(docName) == 0, subWindows))
 					sub = found[0]
 					sub.setWindowFlags(sub.windowFlags() | QtCore.Qt.Window)
 					sub.setParent(None, QtCore.Qt.Window)
