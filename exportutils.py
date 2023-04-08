@@ -591,12 +591,13 @@ class exportutils:
 
 def closeOtherWindows():
 	docName = FreeCAD.ActiveDocument.Name
-	docName = docName.replace("_", "-")
+	docName1 = docName.replace("_", "-")
+	docName2 = docName.replace("-", "_")
 
 	window = FreeCADGui.getMainWindow()
 	mdi = window.findChild(QtGui.QMdiArea)
 	subWindows = list(filter(lambda x: x.windowTitle() != "Start page", mdi.subWindowList()))
 	for x in subWindows:
-		if x.windowTitle().find(docName) != 0:
+		if x.windowTitle().find(docName1) != 0 and x.windowTitle().find(docName2) != 0:
 			x.close()
 
