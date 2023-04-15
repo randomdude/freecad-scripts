@@ -69,7 +69,7 @@ class cutterMaterial:
 			3.0: 1.3,
 			5.0: 1.0
 		}
-		if thicknessFloat not in speeds.keys:
+		if thicknessFloat not in speeds.keys():
 			raise Exception("Speed multiplier for acrylic at thickness " + str(thicknessFloat) + " mm not defined")
 		return cutterMaterial(thicknessFloat, (300 / 60) * speeds[thicknessFloat], 3000 / 60, kerf, cutIntensity)
 
