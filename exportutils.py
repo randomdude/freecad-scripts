@@ -232,6 +232,14 @@ class exportutils:
 			obj.Placement.Base.y = obj.Placement.Base.y - obj.Shape.BoundBox.YMin + startPosY
 			pos = obj.Shape.BoundBox.XMax + spaceBetweenObjects
 
+	def addOrRecreateObject(self, doc, partType, newName):
+		if doc.getObject(newName) is not None:
+			doc.removeObject(newName)
+
+		toRet = doc.addObject(partType, newName)
+		toRet.Label = newName
+		return toRet
+
 	def execute(self):
 		for x in self.objectsToCut:
 			x.recompute()
@@ -242,8 +250,15 @@ class exportutils:
 		if minX < 0 or minY < 0:
 			raise Exception("Objects are not all in positive X and Y space")
 
+		# Make a fuse of our objects, so that we can 'refine'. If we don't, there will be edges inside the shape, where our tabs are, which will confuse
+		# FreeCAD which will (sometimes, not always, it's intermittent!) get trapped in WireJoiner::SplitEdges with millions of tiny edges.
+		objectsFused = self.addOrRecreateObject(FreeCAD.ActiveDocument, "Part::MultiFuse", "objectsFused")
+		objectsFused.Shapes = self.objectsToCut
+		objectsFused.Refine = True
+		objectsFused.recompute(False)
+
 		## make job object and set some basic properties
-		cncjob : PathScripts.PathJob = PathScripts.PathJob.Create('Myjob', self.objectsToCut)
+		cncjob : PathScripts.PathJob = PathScripts.PathJob.Create('Myjob', [ objectsFused ])
 		cncjob.PostProcessor = 'lcnclaser'
 		cncjob.PostProcessorArgs = f" --no-show-editor --cut-intensity {self.material.cutIntensity} "
 		if self.allowZMoves == False:
