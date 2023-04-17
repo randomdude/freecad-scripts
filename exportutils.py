@@ -252,10 +252,13 @@ class exportutils:
 
 		# Make a fuse of our objects, so that we can 'refine'. If we don't, there will be edges inside the shape, where our tabs are, which will confuse
 		# FreeCAD which will (sometimes, not always, it's intermittent!) get trapped in WireJoiner::SplitEdges with millions of tiny edges.
-		objectsFused = self.addOrRecreateObject(FreeCAD.ActiveDocument, "Part::MultiFuse", "objectsFused")
-		objectsFused.Shapes = self.objectsToCut
-		objectsFused.Refine = True
-		objectsFused.recompute(False)
+		if len(self.objectsToCut) == 1:
+			objectsFused = self.objectsToCut[0]
+		else:
+			objectsFused = self.addOrRecreateObject(FreeCAD.ActiveDocument, "Part::MultiFuse", "objectsFused")
+			objectsFused.Shapes = self.objectsToCut
+			objectsFused.Refine = True
+			objectsFused.recompute(False)
 
 		## make job object and set some basic properties
 		cncjob : PathScripts.PathJob = PathScripts.PathJob.Create('Myjob', [ objectsFused ])
