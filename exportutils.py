@@ -373,7 +373,7 @@ class exportutils:
 					# Search sub-windows to find ours. Note that we can't use .activeSubWindow here, since it sometimes
 					# returns None (perhaps the sub-window isn't always focused during our script). We just look at all
 					# sub-windows and discard the one titled 'Start page'.
-					subWindows = list(filter(lambda x: x.windowTitle() != "Start page", mdi.subWindowList()))
+					subWindows = list(filter(lambda x: x.windowTitle().find("exported") == 0, mdi.subWindowList()))
 					if len(subWindows) == 0:
 						if retries == 0:
 							raise Exception("Can't find sub window")
