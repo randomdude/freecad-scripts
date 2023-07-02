@@ -15,6 +15,7 @@ from lasercut.tabproperties import TabProperties
 
 from PathScripts.PathPost import CommandPathPost
 import PathScripts.PathProfile
+import PathScripts.PathEngrave
 import PathScripts.PathJob
 import PathScripts.PathToolBit
 import PathScripts.PathToolController
@@ -268,17 +269,7 @@ class exportutils:
 			cncjob.PostProcessorArgs += " --suppress-z "
 
 		# We can set up our tool now, and a toolcontroller to control it.
-		lasertool = PathScripts.PathToolBit.Factory.Create('laserbeam')
-		toolController = PathScripts.PathToolController.Create('lasercontroller')
-		toolController.Tool = lasertool
-		lasertool.Diameter = self.material.kerf
-		lasertool.Label = "laserBeam"
-
-		cncjob.SetupSheet.HorizRapid = self.material.rapidSpeed
-		cncjob.SetupSheet.VertRapid = self.material.rapidSpeed
-		toolController.HorizFeed = self.material.feedSpeed
-		toolController.VertFeed  = self.material.feedSpeed
-		cncjob.Tools.Group = [ toolController ]
+		self._createTool(cncjob, self.material, "laserbeam")
 
 		# Select the relavant face on each of our objects and profile its child edges.
 		# Store an array of tuples, each containing the object and the face name.
@@ -306,7 +297,7 @@ class exportutils:
 		# Strangely, we must set the 'side' after we set the .Base, otherwise it will be reset to 'Inside'.
 		cutObjs.Side = "Outside"
 		# We set start and final depth the same so that we get a 2D laser-style output.
-		cutObjs.ToolController = toolController
+		cutObjs.ToolController = cncjob.Tools.Group[0]
 		self.setProperty(cutObjs, 'FinalDepth', self.material.thickness)
 		self.setProperty(cutObjs, 'StartDepth', self.material.thickness)
 
@@ -468,35 +459,12 @@ class exportutils:
 		if upsideDown:
 			faceplateCut.Placement.Rotation = FreeCAD.Rotation(FreeCAD.Vector(1,0,0), 180)
 
-		## make job object and set some basic properties
+		# make job object and set some basic properties
 		faceplateCut.Visibility = True
 		faceplateCut.recompute()
-		cncjob = PathScripts.PathJob.Create('Myjob', [faceplateCut])
-		cncjob.PostProcessor = 'mach3_mach4'
-		cncjob.PostProcessorArgs = "--no-show-editor"
 
-		# Set stock offset to zero 
-		stock = self.getObjectByLabel('Stock')
-		stock.ExtXneg = 0
-		stock.ExtXpos = 0
-		stock.ExtYneg = 0
-		stock.ExtYpos = 0
-		stock.ExtZneg = 0
-		stock.ExtZpos = 0
-
-		# We can set up our tool now, and a toolcontroller to control it
-		cutter = PathScripts.PathToolBit.Factory.Create('cutter')
-		toolController = PathScripts.PathToolController.Create('toolController')
-		toolController.Tool = cutter
-		cutter.Diameter = self.material.kerf
-		cutter.Label = "%dmm endmill" % cutter.Diameter
-
-		# And set up speeds and feeds.
-		cncjob.SetupSheet.HorizRapid = self.material.rapidSpeed
-		cncjob.SetupSheet.VertRapid = self.material.rapidSpeed
-		toolController.HorizFeed = self.material.feedSpeed
-		toolController.VertFeed  = self.material.feedSpeed
-		cncjob.Tools.Group = [ toolController ]
+		cncjob = self._createCNCJob([faceplateCut])
+		self._createTool(cncjob, self.material, "endmill")
 
 		# Make pocket and path objects for each
 		pathObjects = []
@@ -556,34 +524,9 @@ class exportutils:
 	def executeForDrilling(self, faceplateCut):
 		exportutils.deleteCADObjects()
 
-		cncjob = PathScripts.PathJob.Create('Myjob', [faceplateCut])
-		cncjob.PostProcessor = 'mach3_mach4'
-		cncjob.PostProcessorArgs = "--no-show-editor"
-
-		# Set stock offset to zero 
-		stock = exportutils.getObjectByLabel('Stock')
-		stock.ExtXneg = 0
-		stock.ExtXpos = 0
-		stock.ExtYneg = 0
-		stock.ExtYpos = 0
-		stock.ExtZneg = 0
-		stock.ExtZpos = 0
-
-		# Make a tool
-		cutter = PathScripts.PathToolBit.Factory.Create('cutter')
-		toolController = PathScripts.PathToolController.Create('toolController')
-		toolController.Tool = cutter
-		cutter.Diameter = self.material.kerf
-#		cutter.SpindleSpeed = 7500
-		cutter.Label = "%dmm twist drill" % cutter.Diameter
-
-		# And set up speeds and feeds.
-		cncjob.SetupSheet.HorizRapid = self.material.rapidSpeed
-		cncjob.SetupSheet.VertRapid = self.material.rapidSpeed
-		toolController.HorizFeed = self.material.feedSpeed
-		toolController.VertFeed  = self.material.feedSpeed
-
-		cncjob.Tools.Group = [ toolController ]
+		cncjob = self._createCNCJob([faceplateCut])
+		# TODO: set feeds/speeds/spindle speed
+		self._createTool(cncjob, self.material, "twist drill")
 
 		# Select faces to cut
 		facesToCut = []
@@ -605,6 +548,38 @@ class exportutils:
 		# Post-process the job now
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith([drillObj], cncjob, False)
+
+	def _createCNCJob(self, objectsToCut):
+		cncjob = PathScripts.PathJob.Create('Myjob', objectsToCut)
+		cncjob.PostProcessor = 'mach3_mach4'
+		cncjob.PostProcessorArgs = "--no-show-editor"
+
+		# Set stock offset to zero
+		stock = self.getObjectByLabel('Stock')
+		stock.ExtXneg = 0
+		stock.ExtXpos = 0
+		stock.ExtYneg = 0
+		stock.ExtYpos = 0
+		stock.ExtZneg = 0
+		stock.ExtZpos = 0
+
+		return cncjob
+
+	def _createTool(self, cncjob, material, toolNameSuffix):
+		# We can set up our tool now, and a toolcontroller to control it
+		cutter = PathScripts.PathToolBit.Factory.Create('cutter_%d_%s' % (material.kerf, toolNameSuffix))
+		toolController = PathScripts.PathToolController.Create('toolController')
+		toolController.Tool = cutter
+		cutter.Diameter = material.kerf
+		cutter.Label = "%dmm %s" % (cutter.Diameter, toolNameSuffix)
+
+		# And set up speeds and feeds.
+		cncjob.SetupSheet.HorizRapid = material.rapidSpeed
+		cncjob.SetupSheet.VertRapid = material.rapidSpeed
+		toolController.HorizFeed = material.feedSpeed
+		toolController.VertFeed  = material.feedSpeed
+		cncjob.Tools.Group = [ toolController ]
+
 
 
 def closeOtherWindows():
