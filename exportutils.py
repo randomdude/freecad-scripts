@@ -504,6 +504,33 @@ class exportutils:
 		p = CommandPathPost()
 		s, self.gcode, filename = p.exportObjectsWith(pathObjects, cncjob, False)
 
+	def executeForMillEngravings(self, strings):
+		doc = FreeCAD.ActiveDocument
+		if 'exported_' not in doc.Name:
+			raise Exception("Run build scripts on a copy of the input, not the original")
+
+		exportutils.deleteCADObjects()
+
+		cncjob = self._createCNCJob(strings)
+		self._createTool(cncjob, self.material, "endmill")
+
+		engraveObjs = []
+		depth = 0.1
+		profileObj = PathScripts.PathEngrave.Create("engravings")
+		for obj in strings:
+			profileObj.BaseShapes.append(obj.Shape)
+		self.setProperty(profileObj, 'FinalDepth', self.material.thickness - depth)
+		self.setProperty(profileObj, 'StepDown', depth)
+		self.setProperty(profileObj, 'SafeHeight', f'{self.material.thickness + 1}mm')
+		self.setProperty(profileObj, 'ClearanceHeight', f'{self.material.thickness + 1}mm')
+		engraveObjs.append(profileObj)
+
+		cncjob.recompute(True)
+
+		# Post-process the job now
+		p = CommandPathPost()
+		s, self.gcode, filename = p.exportObjectsWith(engraveObjs, cncjob, False)
+
 	@staticmethod
 	def getObjectByLabel(objName: str) -> App.DocumentObject:
 		toRet = FreeCAD.ActiveDocument.getObjectsByLabel(objName)
